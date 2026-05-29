@@ -1,4 +1,4 @@
-# 🎓 AI University Chatbot (HSR TechRise)
+# 🎓 AI University Chatbot 
 
 A modern, fast, and feature-rich AI-powered FAQ Chatbot for **HSR TechRise**, designed to assist students, parents, and visitors with inquiries regarding admissions, course details, fees, hostel facilities, academic rules, and campus placements.
 
