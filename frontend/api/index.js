@@ -131,6 +131,10 @@ app.post('*', async (req, res) => {
     res.json({ reply: response.text });
   } catch (error) {
     console.error('Chat API Error:', error);
+    const errorStr = String(error);
+    if (errorStr.includes('429') || error.status === 429) {
+      return res.status(429).json({ error: 'Gemini API rate limit exceeded. Please wait a few seconds and try again.' });
+    }
     res.status(500).json({ error: 'Failed to generate response. Please try again later.' });
   }
 });

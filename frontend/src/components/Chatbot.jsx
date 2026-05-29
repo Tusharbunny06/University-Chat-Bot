@@ -96,10 +96,13 @@ const Chatbot = ({ isOpen, setIsOpen }) => {
       speak(replyText);
     } catch (error) {
       console.error(error);
+      const errorMsg = error.response && error.response.data && error.response.data.error
+        ? error.response.data.error
+        : 'Sorry, I am having trouble connecting to the server right now.';
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         sender: 'bot', 
-        text: 'Sorry, I am having trouble connecting to the server right now.' 
+        text: errorMsg 
       }]);
     } finally {
       setIsTyping(false);
