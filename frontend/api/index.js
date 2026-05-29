@@ -1,7 +1,9 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const { GoogleGenAI } = require('@google/genai');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { GoogleGenAI } from '@google/genai';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 dotenv.config();
 
@@ -133,10 +135,11 @@ app.post('*', async (req, res) => {
   }
 });
 
-if (require.main === module) {
+const isMain = process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url));
+if (isMain) {
   app.listen(PORT, () => {
     console.log(`Backend server running on http://localhost:${PORT}`);
   });
 }
 
-module.exports = app;
+export default app;
