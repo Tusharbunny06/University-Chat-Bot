@@ -11,8 +11,18 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Initialize Gemini API Client
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Initialize Gemini API Client lazily to prevent build-time/init crashes
+let aiInstance;
+const getAiClient = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is missing!");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 // System prompt for the bot
 const systemInstruction = `You are a helpful and polite College FAQ AI Assistant for HSR TechRise.
@@ -70,8 +80,9 @@ Use the following comprehensive context to answer user queries:
 
 If a user asks something completely unrelated to college or education, politely decline to answer and guide them back to college topics. Be concise, friendly, and use simple formatting like bullet points when listing things.`;
 
-app.post('/api/chat', async (req, res) => {
+app.post('*', async (req, res) => {
   try {
+    const ai = getAiClient();
     const { message, history, language } = req.body;
 
     if (!message) {
