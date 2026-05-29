@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { GoogleGenAI } from '@google/genai';
+import Groq from 'groq-sdk';
 import { fileURLToPath } from 'url';
 import path from 'path';
 
@@ -13,17 +13,18 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 5000;
 
-// Initialize Gemini API Client lazily to prevent build-time/init crashes
-let aiInstance;
-const getAiClient = () => {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
+// Initialize Groq API Client lazily to prevent build-time/init crashes
+let groqInstance;
+const getGroqClient = () => {
+  if (!groqInstance) {
+    // Look for GROQ_API_KEY, fallback to GEMINI_API_KEY in case they put the key there
+    const apiKey = process.env.GROQ_API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is missing!");
+      throw new Error("GROQ_API_KEY environment variable is missing!");
     }
-    aiInstance = new GoogleGenAI({ apiKey });
+    groqInstance = new Groq({ apiKey });
   }
-  return aiInstance;
+  return groqInstance;
 };
 
 // System prompt for the bot
@@ -84,17 +85,17 @@ If a user asks something completely unrelated to college or education, politely 
 
 app.post('*', async (req, res) => {
   try {
-    const ai = getAiClient();
+    const groq = getGroqClient();
     const { message, history, language } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    // Format history for Gemini API
-    const formattedHistory = history ? history.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'model',
-      parts: [{ text: msg.text }]
+    // Format history for Groq API (OpenAI format: role is user or assistant)
+    const formattedMessages = history ? history.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.text
     })) : [];
 
     let currentSystemInstruction = systemInstruction;
@@ -102,38 +103,25 @@ app.post('*', async (req, res) => {
        currentSystemInstruction += `\n\nIMPORTANT: You must respond in the language corresponding to the language code: ${language}.`;
     }
 
-    // Initialize chat session with history and system instruction
-    const chat = ai.chats.create({
-        model: 'gemini-2.5-flash',
-        config: {
-            systemInstruction: currentSystemInstruction,
-            temperature: 0.7,
-        }
-    });
-    
-    // We can't directly pass history to create() in the same way, let's just use generateContent with the full conversation history.
-    const contents = [
-      { role: 'user', parts: [{ text: 'Please act according to your system instructions.' }] },
-      { role: 'model', parts: [{ text: 'Understood.' }] },
-      ...formattedHistory,
-      { role: 'user', parts: [{ text: message }] }
+    // Combine system prompt, history and current user message
+    const messages = [
+      { role: 'system', content: currentSystemInstruction },
+      ...formattedMessages,
+      { role: 'user', content: message }
     ];
 
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: contents,
-        config: {
-            systemInstruction: currentSystemInstruction,
-            temperature: 0.7,
-        }
+    const response = await groq.chat.completions.create({
+      messages: messages,
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
     });
 
-    res.json({ reply: response.text });
+    res.json({ reply: response.choices[0].message.content });
   } catch (error) {
     console.error('Chat API Error:', error);
     const errorStr = String(error);
     if (errorStr.includes('429') || error.status === 429) {
-      return res.status(429).json({ error: 'Gemini API rate limit exceeded. Please wait a few seconds and try again.' });
+      return res.status(429).json({ error: 'Groq API rate limit exceeded. Please wait a few seconds and try again.' });
     }
     res.status(500).json({ error: 'Failed to generate response. Please try again later.' });
   }
