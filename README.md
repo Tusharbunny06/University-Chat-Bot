@@ -106,6 +106,4 @@ The project is structured to deploy to **Vercel** with zero-config serverless in
 
 ---
 
-## 📝 License
 
-This project is open-source and available under the [MIT License](LICENSE).
