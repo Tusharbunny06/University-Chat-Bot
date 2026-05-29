@@ -85,7 +85,7 @@ const Chatbot = ({ isOpen, setIsOpen }) => {
 
     try {
       // Send to backend
-      const res = await axios.post('http://localhost:5000/api/chat', {
+      const res = await axios.post('/api/chat', {
         message: text.trim(),
         history: currentHistory.slice(-5), // Send last 5 messages for context
         language: language
